@@ -3,7 +3,7 @@ import random
 import sys
 import numpy as np
 import os
-from game_objects import Ship, Explosion   # your custom ship + explosion class
+from game_objects import Ship, Explosion   # Import custom Ship + Explosion classes
 
 # File to save high scores
 SCORES_FILE = "scores.txt"
@@ -11,21 +11,24 @@ SCORES_FILE = "scores.txt"
 # Screen dimensions
 WIDTH = 1900
 HEIGHT = 1000
+FPS = 60   # frames per second cap
 
 
 # ---------------- SCORE HANDLING ---------------- #
 
 def save_score(score, initials):
     """Save the player's score with initials into a file."""
+    # Open file in append mode, add score + initials
     with open(SCORES_FILE, "a") as f:
-        f.write(f"{score},{initials}\n")  # Format: 120,ABC
+        f.write(f"{score},{initials}\n")  # Example: "120,ABC"
 
 
 def load_top_scores(limit=3):
     """Load scores from file and return top N as list of (score, initials)."""
     if not os.path.exists(SCORES_FILE):
-        return []
+        return []   # No scores yet
     
+    # Read scores file
     with open(SCORES_FILE, "r") as f:
         lines = f.readlines()
     
@@ -33,105 +36,113 @@ def load_top_scores(limit=3):
     for line in lines:
         try:
             s, initials = line.strip().split(",", 1)
-            scores.append((int(s), initials))  # turn into tuple (score, initials)
+            scores.append((int(s), initials))  # Turn into tuple (score, initials)
         except:
-            continue
+            continue   # Skip bad lines
     
     # Sort scores highest → lowest
     scores.sort(key=lambda x: x[0], reverse=True)
-    return scores[:limit]
+    return scores[:limit]   # Only return top `limit` scores
 
 
 # ---------------- INITIALS INPUT ---------------- #
 
 def get_initials(screen):
     """Ask the player to type 1–3 initials before game starts."""
-    initials = ""
+    initials = ""    # Stores player input
     entering = True
     font_big = pygame.font.SysFont(None, 100)
     font_small = pygame.font.SysFont(None, 50)
 
+    # Loop until player presses Enter
     while entering:
         screen.fill((0, 0, 0))
 
-        # Instructions
+        # Instructions text
         text = font_big.render("Enter Your Initials:", True, (255, 255, 0))
         screen.blit(text, (WIDTH//2 - 300, HEIGHT//2 - 100))
 
-        # Display what player typed so far
+        # Display typed initials
         text2 = font_big.render(initials, True, (0, 255, 0))
         screen.blit(text2, (WIDTH//2 - 100, HEIGHT//2 + 20))
 
-        # Small instructions
+        # Hint text
         hint = font_small.render("Press ENTER when done (max 3 letters)", True, (200, 200, 200))
         screen.blit(hint, (WIDTH//2 - 250, HEIGHT//2 + 150))
 
         pygame.display.flip()
 
+        # Handle key input
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT:   # Window closed
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN and initials:
-                    entering = False
+                    entering = False   # Done entering initials
                 elif event.key == pygame.K_BACKSPACE:
-                    initials = initials[:-1]
+                    initials = initials[:-1]   # Remove last character
                 elif len(initials) < 3 and event.unicode.isalpha():
-                    initials += event.unicode.upper()
+                    initials += event.unicode.upper()   # Add letter
 
-    return initials
+    return initials   # Return player initials
 
 
 # ---------------- GAME LOOP ---------------- #
 
 def run_game(screen):
-    """Run one round of the game and return the score."""
-
-    # Player ship position (on the left)
+    # Player’s ship position
     own_ship_pos = HEIGHT // 2
+    ship_speed = 5         # Speed of enemy ships
+    max_ships = 2          # Start with 2 enemy ships max
+    spawn_new_ship = False # Flag to add new ship after one destroyed
 
-    # Difficulty settings
-    ship_speed = 5
-    max_ships = 2
-    spawn_new_ship = False
-
-    # Start with 2 enemy ships
+    # Create starting ships
     ships = []
     for _ in range(2):
         ship = Ship(speed=ship_speed, ship_pos=random.randint(100, HEIGHT - 100))
-        ship.ship_pos_x = WIDTH + random.randint(50, 300)  # spawn off-screen to the right
+        ship.ship_pos_x = WIDTH + random.randint(50, 300)   # Spawn offscreen
         ships.append(ship)
 
-    # Game state variables
-    # create stars once
+    # Lists for lasers and explosions
     lasers = []
     explosions = []
+    # Generate background stars (random positions)
+    stars = [[random.randint(0, WIDTH), random.randint(0, HEIGHT)] for _ in range(200)]
+
     score = 0
     running = True
     clock = pygame.time.Clock()
     font = pygame.font.SysFont(None, 55)
 
+    # -------- Main game loop -------- #
     while running:
         screen.fill((0, 0, 0))
 
-        # --------- Event handling --------- #
+        # --------- Handle events --------- #
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+            if event.type == pygame.QUIT:   # Window closed
                 pygame.quit()
                 sys.exit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    # Fire laser (starts at player ship's nose)
-                    lasers.append([100, own_ship_pos])
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                # Fire a laser from player’s ship
+                lasers.append([100, own_ship_pos])
 
-        # Player movement (W/S or arrow keys)
+        # Movement keys
         keys = pygame.key.get_pressed()
         if keys[pygame.K_UP] or keys[pygame.K_w]:
-            own_ship_pos -= 7
+            own_ship_pos -= 7   # Move up
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            own_ship_pos += 7
-        own_ship_pos = np.clip(own_ship_pos, 50, HEIGHT - 50)
+            own_ship_pos += 7   # Move down
+        own_ship_pos = np.clip(own_ship_pos, 50, HEIGHT - 50)  # Keep inside screen
+
+        # --------- Background stars --------- #
+        for star in stars:
+            pygame.draw.circle(screen, (255, 255, 255), star, 2)  # Draw star
+            star[0] -= 2   # Move left
+            if star[0] < 0:   # Wrap star back to right side
+                star[0] = WIDTH
+                star[1] = random.randint(0, HEIGHT)
 
         # --------- Spawn new ship if needed --------- #
         if spawn_new_ship and len(ships) < max_ships:
@@ -141,51 +152,60 @@ def run_game(screen):
             spawn_new_ship = False
 
         # --------- Update ships --------- #
-        for ship in ships:
-            ship.update(screen)  # assuming your Ship class has update() to move & draw
+        for ship in ships[:]:
+            ship.show_ship(screen)   # Draw enemy ship
+
+            # 🚨 GAME OVER if ship passes player
+            if ship.ship_pos_x < 0:
+                running = False   # End game loop
 
         # --------- Update lasers --------- #
-        for laser in lasers[:]:  # copy to safely remove
-            pygame.draw.line(screen, (255, 0, 0), (laser[0], laser[1]), (laser[0] + 40, laser[1]), 8)
-            laser[0] += 15
+        for laser in lasers[:]:
+            # Draw laser (two lines for glowing effect)
+            pygame.draw.line(screen, (255, 0, 0), (laser[0], laser[1]), (laser[0] + 60, laser[1]), 10)
+            pygame.draw.line(screen, (255, 255, 0), (laser[0], laser[1]), (laser[0] + 60, laser[1]), 4)
+            laser[0] += 25   # Move laser right
 
-            # Remove if off-screen
             if laser[0] >= WIDTH:
-                lasers.remove(laser)
+                lasers.remove(laser)   # Remove offscreen lasers
                 continue
 
-            # Collision check with enemy ships
+            # Collision detection with ships
             for ship in ships[:]:
                 if np.abs(laser[0] - ship.ship_pos_x) < 40 and np.abs(laser[1] - ship.ship_pos_y) < 40:
-                    explosions.append(Explosion(pos_x=laser[0], pos_y=laser[1]))
-                    ships.remove(ship)
+                    explosions.append(Explosion(laser[0], laser[1]))  # Explosion at hit
+                    ships.remove(ship)     # Destroy ship
                     if laser in lasers:
                         lasers.remove(laser)
-                    spawn_new_ship = True
-                    score += 1
+                    spawn_new_ship = True  # Flag to spawn replacement
+                    score += 1             # Increase score
 
                     # Difficulty scaling
-                    if score % 3 == 0:   # every 3 kills → ships faster
-                        ship_speed += 1
-                    if score % 10 == 0:  # every 10 kills → add new ship slot
-                        max_ships += 1
+                    if score % 3 == 0:
+                        ship_speed += 1    # Speed up enemy ships
+                    if score % 10 == 0:
+                        max_ships += 1     # More ships allowed
 
-        # --------- Draw explosions --------- #
+        # --------- Update explosions --------- #
         for exp in explosions[:]:
-            if not exp.update(screen):
+            exp.draw_explosion(screen)
+            if exp.circle_radius > 200:   # Remove after expansion
                 explosions.remove(exp)
 
-        # --------- Draw player ship --------- #
-        pygame.draw.polygon(screen, (0, 255, 0), [(50, own_ship_pos), (100, own_ship_pos - 25), (100, own_ship_pos + 25)])
+        # --------- Player ship (green triangle) --------- #
+        pygame.draw.polygon(screen, (0, 255, 0),
+                            [(50, own_ship_pos),
+                             (100, own_ship_pos - 25),
+                             (100, own_ship_pos + 25)])
 
-        # --------- Draw score --------- #
+        # --------- Draw Score --------- #
         score_text = font.render(f"Score: {score}", True, (255, 255, 0))
         screen.blit(score_text, (WIDTH - 250, 20))
 
         pygame.display.flip()
-        clock.tick(60)
+        clock.tick(FPS)   # Limit to FPS
 
-    return score
+    return score   # Return final score when game ends
 
 
 # ---------------- MAIN LOOP ---------------- #
@@ -198,7 +218,7 @@ def main():
     font_big = pygame.font.SysFont(None, 100)
     font_small = pygame.font.SysFont(None, 55)
 
-    while True:
+    while True:   # Infinite loop until quit
         # Get player initials before starting
         initials = get_initials(screen)
 
@@ -216,9 +236,11 @@ def main():
         while showing:
             screen.fill((0, 0, 0))
 
+            # Big GAME OVER text
             text = font_big.render("GAME OVER", True, (255, 0, 0))
             screen.blit(text, (WIDTH//2 - 200, HEIGHT//2 - 150))
 
+            # Show player score
             score_text = font_small.render(f"Your Score: {score} ({initials})", True, (255, 255, 0))
             screen.blit(score_text, (WIDTH//2 - 200, HEIGHT//2 - 50))
 
@@ -226,23 +248,25 @@ def main():
             top_text = font_small.render("Top Scores:", True, (0, 255, 0))
             screen.blit(top_text, (WIDTH//2 - 200, HEIGHT//2 + 20))
 
+            # Print high scores
             for i, (s, ini) in enumerate(top_scores, start=1):
                 entry = font_small.render(f"{i}. {s} ({ini})", True, (0, 200, 200))
                 screen.blit(entry, (WIDTH//2 - 200, HEIGHT//2 + 60 + i * 40))
 
-            # Instruction to restart
+            # Restart or quit instructions
             restart_text = font_small.render("Press ENTER to Play Again or Q to Quit", True, (200, 200, 200))
             screen.blit(restart_text, (WIDTH//2 - 300, HEIGHT//2 + 250))
 
             pygame.display.flip()
 
+            # Handle restart/quit input
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
+                if event.type == pygame.QUIT:   # Window closed
                     pygame.quit()
                     sys.exit()
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_RETURN:
-                        showing = False  # restart loop
+                        showing = False  # Restart game
                     elif event.key == pygame.K_q:
                         pygame.quit()
                         sys.exit()
