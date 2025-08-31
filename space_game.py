@@ -114,6 +114,7 @@ def run_game(screen):
     running = True
     clock = pygame.time.Clock()
     font = pygame.font.SysFont(None, 55)
+    last_speed_increase = 0
 
     # -------- Main game loop -------- #
     while running:
@@ -181,16 +182,19 @@ def run_game(screen):
                     score += 1             # Increase score
 
                     # Difficulty scaling
-                    if score % 3 == 0:
-                        ship_speed += 1    # Speed up enemy ships
-                    if score % 10 == 0:
-                        max_ships += 1     # Raise the limit
-                        # Immediately spawn a new ship if under limit
-                        if len(ships) < max_ships:
-                            new_ship = Ship(speed=ship_speed, ship_pos=random.randint(100, HEIGHT - 100))
-                            new_ship.ship_pos_x = WIDTH + random.randint(50, 300)
-                            ships.append(new_ship)
-                        # More ships allowed
+                # --------- Difficulty Scaling --------- #
+        if score > 0 and score % 3 == 0 and last_speed_increase != score:
+            ship_speed += 1           # Enemies get faster
+            last_speed_increase = score
+
+        if score > 0 and score % 5 == 0 and last_speed_increase != score:
+            PLAYER_SPEED += 1         # Player moves faster
+            last_speed_increase = score
+
+        if score > 0 and score % 10 == 0 and last_speed_increase != score:
+            max_ships += 1            # More enemies on screen
+            last_speed_increase = score
+
 
         # --------- Update explosions --------- #
         for exp in explosions[:]:
