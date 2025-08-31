@@ -190,4 +190,4 @@ while True:
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_RETURN:   # Enter key restarts
-                    end_display_running = False
+                    end_display_running = False # end display
