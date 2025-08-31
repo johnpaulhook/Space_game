@@ -3,6 +3,36 @@ import random
 import sys
 import numpy as np
 from game_objects import Ship, Explosion
+import datetime
+import os
+
+SCORES_FILE = "score.py"
+
+def save_score(score):
+    """Save the player's score with timestamp into a file."""
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    with open(SCORES_FILE, "a") as f:
+        f.write(f"{score},{now}\n")
+
+def load_top_scores(limit=3):
+    """Load scores from file and return top N as list of tuples (score, date)."""
+    if not os.path.exists(SCORES_FILE):
+        return []
+    
+    with open(SCORES_FILE, "r") as f:
+        lines = f.readlines()
+    
+    scores = []
+    for line in lines:
+        try:
+            s, d = line.strip().split(",", 1)
+            scores.append((int(s), d))
+        except:
+            continue  # skip malformed lines
+    
+    # Sort by score (descending)
+    scores.sort(key=lambda x: x[0], reverse=True)
+    return scores[:limit]
 
 # Initialize Pygame and fonts
 pygame.init()
@@ -53,12 +83,10 @@ def run_game():
 
         # Clear screen (black background)
         screen.fill((0, 0, 0))
-        pygame.display.flip()
 
         # --- Draw Stars ---
         for star in stars:
             pygame.draw.circle(screen, (255, 255, 255), star, 2)
-        pygame.display.flip()
 
         # --- Draw Player Rocket ---
         rocket_x = 50
@@ -169,7 +197,9 @@ def run_game():
 # ---------------------------
 while True:
     score = run_game()  # play one round
-    
+    save_score(score)                 # save the score with date
+    top_scores = load_top_scores(3)   # get top 3 scores
+
     # --- Game Over screen ---
     screen.fill((0, 0, 0))  # black background
     font = pygame.font.SysFont(None, 150)
@@ -179,7 +209,15 @@ while True:
     text_rect2 = text_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 100))
     screen.blit(text_surface, text_rect)
     screen.blit(text_surface2, text_rect2)
-    
+        # --- Draw Top 3 Scores ---
+    font_small = pygame.font.SysFont(None, 70)
+    y_offset = HEIGHT // 2 + 200
+    for i, (s, d) in enumerate(top_scores, start=1):
+        text = font_small.render(f"{i}. {s}  ({d})", True, (255, 0, 0))  # RED
+        text_rect = text.get_rect(center=(WIDTH // 2, y_offset))         # CENTER
+        screen.blit(text, text_rect)
+        y_offset += 80
+
     # Wait for user to press ENTER before restarting
     end_display_running = True
     while end_display_running:
