@@ -94,7 +94,7 @@ def run_game(screen):
     # Player’s ship position
     own_ship_pos = HEIGHT // 2
     ship_speed = 5         # Speed of enemy ships
-    max_ships = 2          # Start with 2 enemy ships max
+    max_ships = 200          # Start with 2 enemy ships max
     spawn_new_ship = False # Flag to add new ship after one destroyed
 
     # Create starting ships
@@ -103,13 +103,13 @@ def run_game(screen):
         ship = Ship(speed=ship_speed, ship_pos=random.randint(100, HEIGHT - 100))
         ship.ship_pos_x = WIDTH + random.randint(50, 300)   # Spawn offscreen
         ships.append(ship)
-
     # Lists for lasers and explosions
     lasers = []
     explosions = []
     # Generate background stars (random positions)
     stars = [[random.randint(0, WIDTH), random.randint(0, HEIGHT)] for _ in range(200)]
-
+    PLAYER_SPEED = 10
+    LASER_SPEED = 50
     score = 0
     running = True
     clock = pygame.time.Clock()
@@ -121,20 +121,20 @@ def run_game(screen):
 
         # --------- Handle events --------- #
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:   # Window closed
+            if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
-                # Fire a laser from player’s ship
                 lasers.append([100, own_ship_pos])
 
-        # Movement keys
+        # ✅ Get keyboard state every frame
         keys = pygame.key.get_pressed()
+
         if keys[pygame.K_UP] or keys[pygame.K_w]:
-            own_ship_pos -= 7   # Move up
+            own_ship_pos -= PLAYER_SPEED
         if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            own_ship_pos += 7   # Move down
-        own_ship_pos = np.clip(own_ship_pos, 50, HEIGHT - 50)  # Keep inside screen
+            own_ship_pos += PLAYER_SPEED
+
 
         # --------- Background stars --------- #
         for star in stars:
@@ -164,7 +164,7 @@ def run_game(screen):
             # Draw laser (two lines for glowing effect)
             pygame.draw.line(screen, (255, 0, 0), (laser[0], laser[1]), (laser[0] + 60, laser[1]), 10)
             pygame.draw.line(screen, (255, 255, 0), (laser[0], laser[1]), (laser[0] + 60, laser[1]), 4)
-            laser[0] += 25   # Move laser right
+            laser[0] += LASER_SPEED
 
             if laser[0] >= WIDTH:
                 lasers.remove(laser)   # Remove offscreen lasers
@@ -184,7 +184,13 @@ def run_game(screen):
                     if score % 3 == 0:
                         ship_speed += 1    # Speed up enemy ships
                     if score % 10 == 0:
-                        max_ships += 1     # More ships allowed
+                        max_ships += 1     # Raise the limit
+                        # Immediately spawn a new ship if under limit
+                        if len(ships) < max_ships:
+                            new_ship = Ship(speed=ship_speed, ship_pos=random.randint(100, HEIGHT - 100))
+                            new_ship.ship_pos_x = WIDTH + random.randint(50, 300)
+                            ships.append(new_ship)
+                        # More ships allowed
 
         # --------- Update explosions --------- #
         for exp in explosions[:]:
@@ -192,11 +198,39 @@ def run_game(screen):
             if exp.circle_radius > 200:   # Remove after expansion
                 explosions.remove(exp)
 
-        # --------- Player ship (green triangle) --------- #
-        pygame.draw.polygon(screen, (0, 255, 0),
-                            [(50, own_ship_pos),
-                             (100, own_ship_pos - 25),
-                             (100, own_ship_pos + 25)])
+ # --- Draw Player Rocket ---
+        rocket_x = 50
+        rocket_y = own_ship_pos
+
+        # Rocket body (rectangle)
+        pygame.draw.rect(screen, (200, 200, 255), (rocket_x, rocket_y - 20, 50, 40))
+        # Nose cone (triangle)
+        pygame.draw.polygon(screen, (180, 0, 0), [
+            (rocket_x + 50, rocket_y - 20),
+            (rocket_x + 50, rocket_y + 20),
+            (rocket_x + 70, rocket_y)
+        ])
+        # Top fin
+        pygame.draw.polygon(screen, (180, 0, 0), [
+            (rocket_x, rocket_y - 20),
+            (rocket_x - 15, rocket_y - 30),
+            (rocket_x, rocket_y - 30)
+        ])
+        # Bottom fin
+        pygame.draw.polygon(screen, (180, 0, 0), [
+            (rocket_x, rocket_y + 20),
+            (rocket_x - 15, rocket_y + 30),
+            (rocket_x, rocket_y + 30)
+        ])
+        # Window (circle)
+        pygame.draw.circle(screen, (0, 150, 255), (rocket_x + 25, rocket_y), 8)
+        # Rocket flame (random size so it flickers)
+        flame_length = random.randint(15, 30)
+        pygame.draw.polygon(screen, (255, 140, 0), [
+            (rocket_x, rocket_y - 20),
+            (rocket_x, rocket_y + 20),
+            (rocket_x - flame_length, rocket_y)
+        ])
 
         # --------- Draw Score --------- #
         score_text = font.render(f"Score: {score}", True, (255, 255, 0))
