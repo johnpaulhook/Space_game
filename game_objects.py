@@ -54,13 +54,41 @@ class Ship:
 
         # Move ship left each frame
         self.ship_pos_x -= self.speed
+        
 
 class Explosion:
-    def __init__(self, pos_x, pos_y):
-        self.pos_x = pos_x
-        self.pos_y = pos_y
-        self.circle_radius = 30
-    
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.max_radius = 120
+        self.rings = []  # multiple staggered rings
+
+        # Create 3–5 rings, each starting offset
+        for i in range(random.randint(3, 5)):
+            start_offset = random.randint(0, 15)
+            self.rings.append({
+                "radius": 5 + start_offset,
+                "alpha": 255,
+                "growth": random.randint(6, 10),   # fast growth
+                "fade": random.randint(6, 10),     # fast fade
+                "color": random.choice([
+                    (255, 60, 0), 
+                    (255, 140, 0), 
+                    (255, 200, 0)
+                ])
+            })
+
     def draw_explosion(self, screen):
-        pygame.draw.circle(surface=screen, color=(255,0,0), center=(self.pos_x, self.pos_y), radius=self.circle_radius)
-        self.circle_radius += 30
+        for ring in self.rings[:]:
+            ring["radius"] += ring["growth"]
+            ring["alpha"] -= ring["fade"]
+
+            if ring["alpha"] <= 0:
+                self.rings.remove(ring)
+                continue
+
+            surf = pygame.Surface((self.max_radius*2, self.max_radius*2), pygame.SRCALPHA)
+            r, g, b = ring["color"]
+            color = (r, g, b, max(0, ring["alpha"]))
+            pygame.draw.circle(surf, color, (self.max_radius, self.max_radius), ring["radius"], width=3)
+            screen.blit(surf, (self.x - self.max_radius, self.y - self.max_radius))
