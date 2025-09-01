@@ -85,23 +85,19 @@ def run_game(screen):
     ship_speed = 5
     max_ships = 200
     spawn_new_ship = False
-
     # ---- Create starting enemy ships ---- #
     ships = []
     for _ in range(2):
         ship = Ship(speed=ship_speed, ship_pos=random.randint(100, HEIGHT - 100))
         ship.ship_pos_x = WIDTH + random.randint(50, 300)
         ships.append(ship)
-
     lasers = []
     explosions = []
-
     # --- Parallax starfield setup --- #
     stars = []
     for layer in STAR_LAYERS:
         for _ in range(STARS_PER_LAYER):
             stars.append([random.randint(0, WIDTH), random.randint(0, HEIGHT), layer])
-
     player_speed = PLAYER_BASE_SPEED
     score = 0
     running = True
@@ -150,9 +146,52 @@ def run_game(screen):
 
         # --------- Update ships --------- #
         for ship in ships[:]:
-            ship.show_ship(screen)
-            if ship.ship_pos_x < 0:  # Enemy passed → game over
+            rocket_x = ship.ship_pos_x
+            rocket_y = ship.ship_pos_y
+
+            # Body
+            pygame.draw.rect(screen, (200, 100, 100), (rocket_x - 50, rocket_y - 20, 50, 40))  
+
+            # Nose cone (facing left now)
+            pygame.draw.polygon(screen, (150, 0, 0), [
+                (rocket_x - 50, rocket_y - 20),
+                (rocket_x - 50, rocket_y + 20),
+                (rocket_x - 70, rocket_y)
+            ])
+
+            # Top fin
+            pygame.draw.polygon(screen, (150, 0, 0), [
+                (rocket_x, rocket_y - 20),
+                (rocket_x + 15, rocket_y - 30),
+                (rocket_x, rocket_y - 30)
+            ])
+
+            # Bottom fin
+            pygame.draw.polygon(screen, (150, 0, 0), [
+                (rocket_x, rocket_y + 20),
+                (rocket_x + 15, rocket_y + 30),
+                (rocket_x, rocket_y + 30)
+            ])
+
+            # Window
+            pygame.draw.circle(screen, (0, 200, 255), (rocket_x - 25, rocket_y), 8)
+
+            # Enemy flame (also sinusoidal but pointing right now)
+            t = pygame.time.get_ticks() * 0.02
+            flame_length = 20 + int(10 * np.sin(t))
+            pygame.draw.polygon(screen, (255, 120, 0), [
+                (rocket_x, rocket_y - 20),
+                (rocket_x, rocket_y + 20),
+                (rocket_x + flame_length, rocket_y)
+            ])
+
+            # Move enemy ship
+            ship.ship_pos_x -= ship.speed
+
+            # If they pass the left edge → game over
+            if ship.ship_pos_x < 0:
                 running = False
+
 
         # --------- Update lasers --------- #
         for laser in lasers[:]:
