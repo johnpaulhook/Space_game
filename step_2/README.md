@@ -56,7 +56,7 @@ Welcome to **Johnny’s Space Game** – a fast-paced space shooter where you pi
 2. Run the game with:
 
    ```bash
-   python space_game.py
+   python game.py
    ```
 
 3. The game window will open. Fly, shoot, and survive as long as you can!
